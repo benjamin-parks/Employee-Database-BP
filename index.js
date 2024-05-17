@@ -152,17 +152,22 @@ function mainMenu() {
                     if (err) {
                         console.error('Error selecting departments:', err);
                     } else {
-                        console.log('Departments:', result.rows);
+                        // console.log('Departments:', result.rows);
+                        console.table(result.rows);
                     }
                     mainMenu(); // Return to main menu
                 });
                 break;
             case 'View roles':
-                pool.query(`SELECT * FROM roles;`, (err, result) => {
+                pool.query(`SELECT roles.title AS "Role Title", roles.id AS "Role ID", departments.department_name AS "Department Name", employee.salary AS "Salary"
+                FROM roles 
+                JOIN departments ON roles.department_id = departments.id
+                JOIN employee ON roles.department_id = employee.department_id;`, (err, result) => {
                     if (err) {
                         console.error('Error selecting roles:', err);
                     } else {
-                        console.log('Roles:', result.rows);
+                        // console.log('Roles:', result.rows);
+                        console.table(result.rows);
                     }
                     mainMenu(); // Return to main menu
                 });
