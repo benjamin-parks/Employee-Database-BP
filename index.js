@@ -1,29 +1,22 @@
 const inquirer = require('inquirer');
 const express = require('express');
+const { Pool } = require('pg');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-const { Pool } = require('pg');
-
 // Connect to database
-const pool = new Pool(
-    {
-      // TODO: Enter PostgreSQL username
-      user: 'postgres',
-      // TODO: Enter PostgreSQL password
-      password: 'password',
-      host: 'localhost',
-      database: 'business_db'
-    },
-    console.log(`Connected to the business_db database.`)
-  )
-  
-  pool.connect();
+const pool = new Pool({
+    user: 'postgres', // TODO: Enter PostgreSQL username
+    password: 'password', // TODO: Enter PostgreSQL password
+    host: 'localhost',
+    database: 'business_db'
+}, console.log(`Connected to the business_db database.`));
+
+pool.connect();
 
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
-
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
@@ -41,11 +34,10 @@ const mainQuestions = [
             'View departments',
             'View roles',
             'View employees',
-            'Update an employee role',
             'Exit'
         ]
     }
-]
+];
 
 const addDepartmentQuestions = [
     {
@@ -53,7 +45,7 @@ const addDepartmentQuestions = [
         name: 'departmentName',
         message: 'What is the name of the department?'
     }
-]
+];
 
 const addRoleQuestions = [
     {
@@ -63,15 +55,15 @@ const addRoleQuestions = [
     },
     {
         type: 'input',
-        name: 'roleID',
-        message: "Which employee ID is changing role?"
+        name: 'employeeSalary',
+        message: "What is the employee's salary?"
     },
     {
         type: 'input',
         name: 'roleDepartment',
         message: 'What is the department ID of the role?'
     }
-]
+];
 
 const addEmployeeQuestions = [
     {
@@ -86,15 +78,15 @@ const addEmployeeQuestions = [
     },
     {
         type: 'input',
-        name: 'employeeSalary',
-        message: "What is the employee's salary?"
+        name: 'role_id',
+        message: 'Role ID of employee?'
     },
     {
         type: 'input',
         name: 'employeeDepartment',
         message: 'Department ID of employee?'
     }
-]
+];
 
 function mainMenu() {
     inquirer.prompt(mainQuestions).then(answers => {
@@ -102,8 +94,8 @@ function mainMenu() {
             case 'Add a department':
                 inquirer.prompt(addDepartmentQuestions).then(departmentAnswers => {
                     pool.query(
-                        `INSERT INTO departments (department_name) VALUES ($1) RETURNING *;`, 
-                        [departmentAnswers.departmentName], 
+                        `INSERT INTO departments (department_name) VALUES ($1) RETURNING *;`,
+                        [departmentAnswers.departmentName],
                         (err, result) => {
                             if (err) {
                                 console.error('Error inserting department:', err);
@@ -118,8 +110,8 @@ function mainMenu() {
             case 'Add a role':
                 inquirer.prompt(addRoleQuestions).then(roleAnswers => {
                     pool.query(
-                        `INSERT INTO roles (title, salary, department_id) VALUES ($1, $2, $3) RETURNING *;`,
-                        [roleAnswers.roleTitle, roleAnswers.roleSalary, roleAnswers.roleDepartment],
+                        `INSERT INTO role (title, salary, department_id) VALUES ($1, $2, $3) RETURNING *;`,
+                        [roleAnswers.roleTitle, roleAnswers.employeeSalary, roleAnswers.roleDepartment],
                         (err, result) => {
                             if (err) {
                                 console.error('Error inserting role:', err);
@@ -134,8 +126,8 @@ function mainMenu() {
             case 'Add an employee':
                 inquirer.prompt(addEmployeeQuestions).then(employeeAnswers => {
                     pool.query(
-                        `INSERT INTO employee (first_name, last_name, salary, department_id) VALUES ($1, $2, $3, $4) RETURNING *;`,
-                        [employeeAnswers.employeeFirstName, employeeAnswers.employeeLastName, employeeAnswers.employeeSalary, employeeAnswers.employeeDepartment],
+                        `INSERT INTO employee (first_name, last_name, role_id, department_id) VALUES ($1, $2, $3, $4) RETURNING *;`,
+                        [employeeAnswers.employeeFirstName, employeeAnswers.employeeLastName, employeeAnswers.role_id, employeeAnswers.employeeDepartment],
                         (err, result) => {
                             if (err) {
                                 console.error('Error inserting employee:', err);
@@ -152,21 +144,16 @@ function mainMenu() {
                     if (err) {
                         console.error('Error selecting departments:', err);
                     } else {
-                        // console.log('Departments:', result.rows);
                         console.table(result.rows);
                     }
                     mainMenu(); // Return to main menu
                 });
                 break;
             case 'View roles':
-                pool.query(`SELECT roles.title AS "Role Title", roles.id AS "Role ID", departments.department_name AS "Department Name", employee.salary AS "Salary"
-                FROM roles 
-                JOIN departments ON roles.department_id = departments.id
-                JOIN employee ON roles.department_id = employee.department_id;`, (err, result) => {
+                pool.query(`SELECT * FROM role;`, (err, result) => {
                     if (err) {
                         console.error('Error selecting roles:', err);
                     } else {
-                        // console.log('Roles:', result.rows);
                         console.table(result.rows);
                     }
                     mainMenu(); // Return to main menu
@@ -177,21 +164,17 @@ function mainMenu() {
                     if (err) {
                         console.error('Error selecting employees:', err);
                     } else {
-                        console.log('Employees:', result.rows);
+                        console.table(result.rows);
                     }
                     mainMenu(); // Return to main menu
                 });
                 break;
-            case 'Update an employee role':
-                // update employee role logic here
-                mainMenu(); // Return to main menu after updating
-                break;
             case 'Exit':
-                pool.end(); 
+                pool.end();
                 process.exit();
                 break;
         }
     });
 }
 
-mainMenu(); // Start the application
+mainMenu();
